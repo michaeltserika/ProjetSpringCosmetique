@@ -58,7 +58,7 @@ Avant de commencer, assurez-vous d'avoir les outils suivants installés sur votr
 
 5. L'application sera accessible à l'adresse suivante dans votre navigateur :
    ```
-   http://localhost:8080
+   http://localhost:9999
    ```
 
 ## Structure du projet
