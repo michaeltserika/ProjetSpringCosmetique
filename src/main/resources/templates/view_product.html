@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" th:replace="~{base::layout(~{::section})}">
+<head>
+	<meta charset="UTF-8">
+	<meta charset="ISO-8859-1">
+	<title>ShopFandresena</title>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			background-color: #f5f5f5; /* Fond gris pâle */
+			color: #333;
+		}
+		.container {
+			background-color: #ffffff; /* Fond blanc pour la section principale */
+			border-radius: 8px;
+			padding: 20px;
+		}
+		.text-success {
+			color: #28a745 !important;
+		}
+		.text-danger {
+			color: #dc3545 !important;
+		}
+		.text-primary {
+			color: #007bff !important;
+		}
+		.fs-3 {
+			color: #ffffff;
+		}
+		.fs-5, .fs-6 {
+			color: #f8f9fa;
+		}
+		.btn-danger {
+			background-color: #dc3545;
+			border-color: #dc3545;
+		}
+		.btn-warning {
+			background-color: #ffc107;
+			border-color: #ffc107;
+		}
+		.btn-success {
+			background-color: #28a745;
+			border-color: #28a745;
+		}
+		.card-sh {
+			background-color: #f9f9f9; /* Fond légèrement gris pour les cartes */
+			box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+		}
+	</style>
+</head>
+<body>
+<section>
+	<div class="container card-sh" style="margin-top: 70px; margin-bottom: 100px">
+		<div class="col-md-12 p-5">
+			<div class="row">
+				<th:block th:if="${session.succMsg}">
+					<p class="text-success alert alert-success text-center" role="alert">[[${session.succMsg}]]</p>
+					<th:block th:text="${@commnServiceImpl.removeSessionMessage()}"></th:block>
+				</th:block>
+
+				<th:block th:if="${session.errorMsg}">
+					<p class="text-danger text-center alert alert-danger">[[${session.errorMsg}]]</p>
+					<th:block th:text="${@commnServiceImpl.removeSessionMessage()}"></th:block>
+				</th:block>
+
+				<div class="col-md-6 text-end">
+					<img alt="" th:src="@{'/img/product_img/'+${product.image}}" width="300px" height="250px">
+				</div>
+
+				<div class="col-md-6">
+					<p class="fs-3">[[${product.title}]]</p>
+					<p>
+						<span class="fw-bold">Description : </span><br>[[${product.description}]]
+					</p>
+					<p>
+						<span class="fw-bold">Détails du produit : </span><br> Statut :
+						<th:block th:if="${product.stock>0}">
+							<span class="badge bg-success">Disponible</span>
+						</th:block>
+
+						<th:block th:unless="${product.stock>0}">
+							<span class="badge bg-warning">Rupture de stock</span>
+						</th:block>
+
+						<br> Catégorie: [[${product.category}]]<br> Politique : 7
+						Jours de remplacement et retour
+					</p>
+					<p class="fs-5 fw-bold">
+						Prix :&nbsp; &nbsp; &nbsp; &nbsp;<i class="fas fa-rupee-sign"></i>
+						[[${product.discountPrice}]] <span class="fs-6 text-decoration-line-through text-secondary">[[${product.price}]]</span>
+						<span class="fs-6 text-success">[[${product.discount}]]% de réduction</span>
+					</p>
+
+					<div class="row">
+						<div class="col-md-4 text-success text-center p-2">
+							<i class="fas fa-money-bill-wave fa-2x"></i>
+							<p>Paiement à la livraison</p>
+						</div>
+						<div class="col-md-4 text-danger text-center p-2">
+							<i class="fas fa-undo-alt fa-2x"></i>
+							<p>Retour possible</p>
+						</div>
+						<div class="col-md-4 text-primary text-center p-2">
+							<i class="fas fa-truck-moving fa-2x"></i>
+							<p>Livraison gratuite</p>
+						</div>
+					</div>
+
+					<th:block th:if="${product.stock>0}">
+						<th:block th:if="${user==null}">
+							<a href="/signin" class="btn btn-danger col-md-12">Ajouter au panier</a>
+						</th:block>
+
+						<th:block th:unless="${user==null}">
+							<a th:href="@{'/user/addCart?pid='+${product.id}+'&uid='+${user.id}}"
+							   class="btn btn-danger col-md-12">Ajouter au panier</a>
+						</th:block>
+					</th:block>
+
+					<th:block th:unless="${product.stock>0}">
+						<a href="#" class="btn text-white btn-warning col-md-12">Rupture de stock</a>
+					</th:block>
+
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+</body>
+</html>
