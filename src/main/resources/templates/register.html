@@ -44,15 +44,15 @@
 
 											<script>
 												document.getElementById("mobileNumber").addEventListener("input", function (e) {
-													this.value = this.value.replace(/\D/g, ''); // Supprime tout sauf les chiffres
+													this.value = this.value.replace(/\D/g, '');
 												});
 
 												document.getElementById("mobileNumber").addEventListener("blur", function (e) {
 													const errorMessage = document.getElementById("error-message");
 													if (this.value.length !== 10 && this.value.length !== 12) {
-														errorMessage.style.display = "block"; // Affiche le message d'erreur
+														errorMessage.style.display = "block";
 													} else {
-														errorMessage.style.display = "none"; // Cache le message si la condition est respectée
+														errorMessage.style.display = "none";
 													}
 												});
 											</script>
@@ -112,7 +112,7 @@
 					</div>
 
 					<div class="card-footer text-center">
-						Déjà un compte ? <a href="/login" class="text-decoration-none">Connexion</a>
+						Déjà un compte ? <a href="/signin" class="text-decoration-none">Connexion</a>
 					</div>
 				</div>
 			</div>
