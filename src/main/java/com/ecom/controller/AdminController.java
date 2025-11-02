@@ -495,16 +495,22 @@ public class AdminController {
 		long totalProducts = statisticsService.getTotalProducts();
 		long totalUsers = statisticsService.getTotalUsers();
 		long totalCategories = statisticsService.getTotalCategories();
+		double totalRevenue = statisticsService.getTotalRevenue();
+		double averageOrderValue = statisticsService.getAverageOrderValue();
 
 		System.out.println("Controller - totalOrders: " + totalOrders);
 		System.out.println("Controller - totalProducts: " + totalProducts);
 		System.out.println("Controller - totalUsers: " + totalUsers);
 		System.out.println("Controller - totalCategories: " + totalCategories);
+		System.out.println("Controller - totalRevenue: " + totalRevenue);
+		System.out.println("Controller - averageOrderValue: " + averageOrderValue);
 
 		m.addAttribute("totalOrders", totalOrders);
 		m.addAttribute("totalProducts", totalProducts);
 		m.addAttribute("totalUsers", totalUsers);
 		m.addAttribute("totalCategories", totalCategories);
+		m.addAttribute("totalRevenue", totalRevenue);
+		m.addAttribute("averageOrderValue", averageOrderValue);
 		return "admin/statistics";
 	}
 
@@ -518,16 +524,22 @@ public class AdminController {
 		long totalProducts = statisticsService.getTotalProducts();
 		long totalUsers = statisticsService.getTotalUsers();
 		long totalCategories = statisticsService.getTotalCategories();
+		double totalRevenue = statisticsService.getTotalRevenue();
+		double averageOrderValue = statisticsService.getAverageOrderValue();
 
 		System.out.println("API - totalOrders: " + totalOrders);
 		System.out.println("API - totalProducts: " + totalProducts);
 		System.out.println("API - totalUsers: " + totalUsers);
 		System.out.println("API - totalCategories: " + totalCategories);
+		System.out.println("API - totalRevenue: " + totalRevenue);
+		System.out.println("API - averageOrderValue: " + averageOrderValue);
 
 		data.put("totalOrders", totalOrders);
 		data.put("totalProducts", totalProducts);
 		data.put("totalUsers", totalUsers);
 		data.put("totalCategories", totalCategories);
+		data.put("totalRevenue", totalRevenue);
+		data.put("averageOrderValue", averageOrderValue);
 
 		// Orders by status
 		Map<String, Long> ordersByStatus = statisticsService.getOrdersByStatus();
@@ -551,6 +563,11 @@ public class AdminController {
 		data.put("last30Days", dates);
 		data.put("ordersPerDay", counts);
 
+		// Additional statistics for better charts
+		data.put("totalRevenue", calculateTotalRevenue());
+		data.put("averageOrderValue", calculateAverageOrderValue());
+		data.put("activeProducts", statisticsService.getTotalProducts());
+
 		// Top products
 		List<Object[]> topProducts = statisticsService.getTopSellingProducts(5);
 		System.out.println("API - topProducts size: " + topProducts.size());
@@ -561,6 +578,28 @@ public class AdminController {
 
 		System.out.println("API - returning data with keys: " + data.keySet());
 		return data;
+	}
+
+	// Helper methods for additional statistics
+	private Double calculateTotalRevenue() {
+		List<ProductOrder> orders = orderService.getAllOrders();
+		System.out.println("AdminController.calculateTotalRevenue() - Found " + orders.size() + " orders");
+		for (ProductOrder order : orders) {
+			System.out.println("Order ID: " + order.getId() + ", Price: " + order.getPrice() + ", Status: " + order.getStatus());
+		}
+		return orders.stream()
+				.mapToDouble(order -> order.getPrice() != null ? order.getPrice() : 0.0)
+				.sum();
+	}
+
+	private Double calculateAverageOrderValue() {
+		List<ProductOrder> orders = orderService.getAllOrders();
+		System.out.println("AdminController.calculateAverageOrderValue() - Found " + orders.size() + " orders");
+		if (orders.isEmpty()) return 0.0;
+		return orders.stream()
+				.mapToDouble(order -> order.getPrice() != null ? order.getPrice() : 0.0)
+				.average()
+				.orElse(0.0);
 	}
 
 	@GetMapping("/exports")
@@ -644,6 +683,17 @@ public class AdminController {
 	public void exportCategoriesToCSV(HttpServletResponse response) throws Exception {
 		List<Category> categories = categoryService.getAllCategory();
 		exportService.exportCategoriesToCSV(categories, response);
+	}
+
+	// Invoice endpoints
+	@GetMapping("/invoice/{orderId}")
+	public void generateInvoice(@PathVariable String orderId, HttpServletResponse response) throws Exception {
+		ProductOrder order = orderService.getOrdersByOrderId(orderId);
+		if (order != null) {
+			exportService.generateInvoicePDF(order, response);
+		} else {
+			response.sendError(HttpServletResponse.SC_NOT_FOUND, "Commande non trouvée");
+		}
 	}
 
 }

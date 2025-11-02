@@ -22,4 +22,8 @@ public interface StatisticsService {
     List<Object[]> getTopSellingProducts(int limit);
 
     List<String> getLast30DaysLabels();
+
+    double getTotalRevenue();
+
+    double getAverageOrderValue();
 }

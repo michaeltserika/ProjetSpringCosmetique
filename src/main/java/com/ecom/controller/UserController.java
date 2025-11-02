@@ -10,6 +10,7 @@ import org.springframework.ui.Model;
 import org.springframework.util.ObjectUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -23,10 +24,13 @@ import com.ecom.model.UserDtls;
 import com.ecom.repository.UserRepository;
 import com.ecom.service.CartService;
 import com.ecom.service.CategoryService;
+import com.ecom.service.ExportService;
 import com.ecom.service.OrderService;
 import com.ecom.service.UserService;
 import com.ecom.util.CommonUtil;
 import com.ecom.util.OrderStatus;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 import jakarta.servlet.http.HttpSession;
 
@@ -46,6 +50,9 @@ public class UserController {
 
 	@Autowired
 	private CommonUtil commonUtil;
+
+	@Autowired
+	private ExportService exportService;
 
 	@Autowired
 	private PasswordEncoder passwordEncoder;
@@ -122,12 +129,17 @@ public class UserController {
 	}
 
 	@PostMapping("/save-order")
-	public String saveOrder(@ModelAttribute OrderRequest request, Principal p) throws Exception {
-		// System.out.println(request);
-		UserDtls user = getLoggedInUserDetails(p);
-		orderService.saveOrder(user.getId(), request);
+	public String saveOrder(@ModelAttribute OrderRequest request, Principal p, HttpSession session) {
+		try {
+			// System.out.println(request);
+			UserDtls user = getLoggedInUserDetails(p);
+			orderService.saveOrder(user.getId(), request);
 
-		return "redirect:/user/success";
+			return "redirect:/user/success";
+		} catch (Exception e) {
+			session.setAttribute("errorMsg", e.getMessage());
+			return "redirect:/user/orders";
+		}
 	}
 
 	@GetMapping("/success")
@@ -141,6 +153,19 @@ public class UserController {
 		List<ProductOrder> orders = orderService.getOrdersByUser(loginUser.getId());
 		m.addAttribute("orders", orders);
 		return "/user/my_orders";
+	}
+
+	@GetMapping("/download-invoice/{orderId}")
+	public void downloadInvoice(@PathVariable String orderId, HttpServletResponse response, Principal p) throws Exception {
+		UserDtls user = getLoggedInUserDetails(p);
+		ProductOrder order = orderService.getOrdersByOrderId(orderId);
+
+		// Vérifier que la commande appartient à l'utilisateur connecté
+		if (order != null && order.getUser().getId().equals(user.getId())) {
+			exportService.generateInvoicePDF(order, response);
+		} else {
+			response.sendError(HttpServletResponse.SC_NOT_FOUND, "Commande non trouvée ou accès non autorisé");
+		}
 	}
 
 	@GetMapping("/update-status")

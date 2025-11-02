@@ -48,6 +48,11 @@
 							<th:block th:unless="${o.status!='Annulée'}">
 								<a href="#" class="btn btn-sm btn-danger disabled">Annuler</a>
 							</th:block>
+							<br><br>
+							<a th:href="@{'/user/download-invoice/'+${o.orderId}}"
+							   class="btn btn-sm btn-primary" target="_blank">
+								<i class="fa-solid fa-download"></i> Facture
+							</a>
 						</td>
 					</tr>
 					</tbody>

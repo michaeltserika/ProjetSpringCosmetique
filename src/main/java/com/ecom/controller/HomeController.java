@@ -250,4 +250,9 @@ public class HomeController {
 
 	}
 
+	@GetMapping("/api/products/category/{categoryName}")
+	public List<Product> getProductsByCategory(@PathVariable String categoryName) {
+		return productService.getAllActiveProducts(categoryName);
+	}
+
 }

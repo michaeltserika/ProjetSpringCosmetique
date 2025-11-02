@@ -41,8 +41,9 @@ public class OrderServiceImpl implements OrderService {
 		for (Cart cart : carts) {
 			Product product = cart.getProduct();
 
+			// Vérifier le stock disponible
 			if (product.getStock() < cart.getQuantity()) {
-				throw new Exception("Stock insuffisant pour le produit : " + product.getTitle());
+				throw new Exception("Stock insuffisant pour le produit : " + product.getTitle() + ". Stock disponible: " + product.getStock() + ", Quantité demandée: " + cart.getQuantity());
 			}
 
 			ProductOrder order = new ProductOrder();

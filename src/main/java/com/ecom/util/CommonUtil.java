@@ -10,10 +10,12 @@ import org.springframework.stereotype.Component;
 
 import com.ecom.model.ProductOrder;
 import com.ecom.model.UserDtls;
+import com.ecom.service.ExportService;
 import com.ecom.service.UserService;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
+import jakarta.mail.util.ByteArrayDataSource;
 import jakarta.servlet.http.HttpServletRequest;
 
 @Component
@@ -24,6 +26,9 @@ public class CommonUtil {
 
 	@Autowired
 	private UserService userService;
+
+	@Autowired
+	private ExportService exportService;
 
 	public Boolean sendMail(String url, String reciepentEmail) throws UnsupportedEncodingException, MessagingException {
 
@@ -123,6 +128,8 @@ public class CommonUtil {
 				+ ".footer p { margin: 5px 0; }"
 				+ ".btn { display: inline-block; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 25px; margin: 10px 5px; }"
 				+ ".btn:hover { background: #5a67d8; }"
+				+ ".invoice-section { background: #e9ecef; border-radius: 8px; padding: 15px; margin: 20px 0; }"
+				+ ".invoice-section h4 { color: #495057; margin-top: 0; }"
 				+ "</style>"
 				+ "</head>"
 				+ "<body>"
@@ -142,6 +149,11 @@ public class CommonUtil {
 				+ "<div class='product-detail'><strong>Quantité :</strong> [[quantity]]</div>"
 				+ "<div class='product-detail'><strong>Type de paiement :</strong> [[paymentType]]</div>"
 				+ "<div class='price-highlight'>Prix total : €[[price]]</div>"
+				+ "</div>"
+				+ "<div class='invoice-section'>"
+				+ "<h4>📄 Facture</h4>"
+				+ "<p>Votre facture est disponible en pièce jointe de cet email. Vous pouvez également la télécharger à tout moment depuis votre compte client.</p>"
+				+ "<p><strong>Numéro de commande :</strong> [[orderId]]</p>"
 				+ "</div>"
 				+ "<p>Si vous avez des questions concernant votre commande, n'hésitez pas à nous contacter.</p>"
 				+ "<div style='text-align: center; margin: 30px 0;'>"
@@ -179,8 +191,20 @@ public class CommonUtil {
 		msg = msg.replace("[[quantity]]", order.getQuantity().toString());
 		msg = msg.replace("[[price]]", order.getPrice().toString());
 		msg = msg.replace("[[paymentType]]", order.getPaymentType());
+		msg = msg.replace("[[orderId]]", order.getOrderId());
 
-		helper.setSubject("Statut de la commande de produit");
+		helper.setSubject("Statut de la commande de produit - " + order.getOrderId());
+
+		// Attach invoice PDF
+		try {
+			byte[] invoicePdf = exportService.generateInvoicePDFBytes(order);
+			ByteArrayDataSource pdfDataSource = new ByteArrayDataSource(invoicePdf, "application/pdf");
+			helper.addAttachment("facture-" + order.getOrderId() + ".pdf", pdfDataSource);
+		} catch (Exception e) {
+			System.err.println("Erreur lors de la génération de la facture PDF: " + e.getMessage());
+			// Continue without attachment if PDF generation fails
+		}
+
 		helper.setText(msg, true);
 		mailSender.send(message);
 		return true;

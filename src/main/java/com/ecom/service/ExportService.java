@@ -32,4 +32,9 @@ public interface ExportService {
     void exportCategoriesToExcel(List<Category> categories, HttpServletResponse response) throws Exception;
 
     void exportCategoriesToCSV(List<Category> categories, HttpServletResponse response) throws Exception;
+
+    // Invoice generation methods
+    void generateInvoicePDF(ProductOrder order, HttpServletResponse response) throws Exception;
+
+    byte[] generateInvoicePDFBytes(ProductOrder order) throws Exception;
 }

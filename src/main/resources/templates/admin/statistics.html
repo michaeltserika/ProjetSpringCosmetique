@@ -5,8 +5,8 @@
     <meta charset="UTF-8">
     <title>Statistiques - ShopFandresena</title>
 
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- ApexCharts -->
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 </head>
 
 <body th:replace="~{base::layout(~{::section})}">
@@ -58,6 +58,30 @@
                 </div>
             </div>
         </div>
+
+        <!-- Nouvelles cartes statistiques -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card modern-card gradient-success text-white shadow-lg">
+                    <div class="card-body text-center">
+                        <i class="fa-solid fa-euro-sign fa-3x mb-3"></i>
+                        <h5 class="fw-bold">Chiffre d'Affaires Total</h5>
+                        <h2 id="totalRevenue">€<span th:text="${#numbers.formatDecimal(totalRevenue, 1, 2)}">307.00</span></h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card modern-card gradient-warning text-white shadow-lg">
+                    <div class="card-body text-center">
+                        <i class="fa-solid fa-shopping-cart fa-3x mb-3"></i>
+                        <h5 class="fw-bold">Panier Moyen</h5>
+                        <h2 id="averageOrderValue">€<span th:text="${#numbers.formatDecimal(averageOrderValue, 1, 2)}">76.75</span></h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
 
         <!-- Graphiques principaux -->
         <div class="row">
@@ -113,79 +137,202 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     fetch('/admin/api/statistics')
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                throw new Error('Erreur HTTP: ' + res.status);
+            }
+            return res.json();
+        })
         .then(data => {
-            
+            console.log('Données reçues:', data);
+
+            // Update additional statistics cards
+            if (data.totalRevenue !== undefined) {
+                document.getElementById('totalRevenue').textContent = '€' + (data.totalRevenue || 0).toFixed(2);
+            }
+            if (data.averageOrderValue !== undefined) {
+                document.getElementById('averageOrderValue').textContent = '€' + (data.averageOrderValue || 0).toFixed(2);
+            }
+
             // === COULEURS ===
             const chartColors = {
-                primary: '#007bff',
+                primary: '#667eea',
                 green: '#28a745',
                 blue: '#17a2b8',
                 red: '#dc3545',
-                yellow: '#ffc107'
+                yellow: '#ffc107',
+                purple: '#6f42c1'
             };
 
             // === 1) Camembert des commandes ===
-            new Chart(document.getElementById('ordersChart'), {
-                type: 'doughnut',
-                data: {
+            try {
+                const ordersChartOptions = {
+                    series: [
+                        data.pendingOrders || 0,
+                        data.processingOrders || 0,
+                        data.deliveredOrders || 0,
+                        data.cancelledOrders || 0
+                    ],
+                    chart: {
+                        type: 'donut',
+                        height: 300
+                    },
                     labels: ['En attente', 'En cours', 'Livré', 'Annulé'],
-                    datasets: [{
-                        data: [
-                            data.pendingOrders || 0,
-                            data.processingOrders || 0,
-                            data.deliveredOrders || 0,
-                            data.cancelledOrders || 0
-                        ],
-                        backgroundColor: [chartColors.yellow, chartColors.blue, chartColors.green, chartColors.red]
+                    colors: [chartColors.yellow, chartColors.blue, chartColors.green, chartColors.red],
+                    legend: {
+                        position: 'bottom'
+                    },
+                    responsive: [{
+                        breakpoint: 480,
+                        options: {
+                            chart: {
+                                width: 200
+                            },
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
                     }]
-                }
-            });
+                };
+                const ordersChart = new ApexCharts(document.querySelector("#ordersChart"), ordersChartOptions);
+                ordersChart.render();
+                console.log('Graphique camembert ApexCharts créé');
+            } catch (error) {
+                console.error('Erreur création camembert:', error);
+            }
 
             // === 2) Barres catégories ===
-            new Chart(document.getElementById('categoriesChart'), {
-                type: 'bar',
-                data: {
-                    labels: data.categoryNames || [],
-                    datasets: [{
-                        label: 'Nombre de produits',
-                        data: data.categoryCounts || [],
-                        backgroundColor: chartColors.primary
-                    }]
-                },
-                options: { responsive: true, maintainAspectRatio: false }
-            });
+            try {
+                const categoriesChartOptions = {
+                    series: [{
+                        name: 'Nombre de produits',
+                        data: data.categoryCounts || []
+                    }],
+                    chart: {
+                        type: 'bar',
+                        height: 300
+                    },
+                    plotOptions: {
+                        bar: {
+                            horizontal: false,
+                            columnWidth: '55%',
+                            endingShape: 'rounded'
+                        }
+                    },
+                    dataLabels: {
+                        enabled: false
+                    },
+                    colors: [chartColors.primary],
+                    xaxis: {
+                        categories: data.categoryNames || []
+                    },
+                    yaxis: {
+                        title: {
+                            text: 'Nombre de produits'
+                        }
+                    }
+                };
+                const categoriesChart = new ApexCharts(document.querySelector("#categoriesChart"), categoriesChartOptions);
+                categoriesChart.render();
+                console.log('Graphique catégories ApexCharts créé');
+            } catch (error) {
+                console.error('Erreur création barres catégories:', error);
+            }
 
             // === 3) Ligne des 30 derniers jours ===
-            new Chart(document.getElementById('ordersTrendChart'), {
-                type: 'line',
-                data: {
-                    labels: data.last30Days || [],
-                    datasets: [{
-                        label: 'Commandes',
-                        data: data.ordersPerDay || [],
-                        borderColor: chartColors.green,
-                        fill: true,
-                        tension: 0.4
-                    }]
-                }
-            });
+            try {
+                const trendChartOptions = {
+                    series: [{
+                        name: 'Commandes par jour',
+                        data: data.ordersPerDay || []
+                    }],
+                    chart: {
+                        type: 'area',
+                        height: 300,
+                        zoom: {
+                            enabled: false
+                        }
+                    },
+                    dataLabels: {
+                        enabled: false
+                    },
+                    stroke: {
+                        curve: 'smooth'
+                    },
+                    colors: [chartColors.green],
+                    xaxis: {
+                        categories: data.last30Days || []
+                    },
+                    yaxis: {
+                        title: {
+                            text: 'Nombre de commandes'
+                        }
+                    },
+                    fill: {
+                        type: 'gradient',
+                        gradient: {
+                            shadeIntensity: 1,
+                            opacityFrom: 0.7,
+                            opacityTo: 0.9,
+                            stops: [0, 90, 100]
+                        }
+                    }
+                };
+                const trendChart = new ApexCharts(document.querySelector("#ordersTrendChart"), trendChartOptions);
+                trendChart.render();
+                console.log('Graphique tendance ApexCharts créé');
+            } catch (error) {
+                console.error('Erreur création ligne tendance:', error);
+            }
 
             // === 4) Top produits ===
-            new Chart(document.getElementById('topProductsChart'), {
-                type: 'bar',
-                data: {
-                    labels: data.topProductNames || [],
-                    datasets: [{
-                        label: 'Ventes',
-                        data: data.topProductSales || [],
-                        backgroundColor: chartColors.yellow
-                    }]
-                },
-                options: { indexAxis: 'y' }
-            });
+            try {
+                const topProductsChartOptions = {
+                    series: [{
+                        name: 'Quantité vendue',
+                        data: data.topProductSales || []
+                    }],
+                    chart: {
+                        type: 'bar',
+                        height: 300
+                    },
+                    plotOptions: {
+                        bar: {
+                            horizontal: true,
+                            barHeight: '70%'
+                        }
+                    },
+                    dataLabels: {
+                        enabled: false
+                    },
+                    colors: [chartColors.yellow],
+                    xaxis: {
+                        categories: data.topProductNames || []
+                    },
+                    yaxis: {
+                        title: {
+                            text: 'Quantité'
+                        }
+                    }
+                };
+                const topProductsChart = new ApexCharts(document.querySelector("#topProductsChart"), topProductsChartOptions);
+                topProductsChart.render();
+                console.log('Graphique top produits ApexCharts créé');
+            } catch (error) {
+                console.error('Erreur création top produits:', error);
+            }
         })
-        .catch(err => console.error("Erreur chargement API :", err));
+        .catch(err => {
+            console.error("Erreur chargement API :", err);
+            // Afficher un message d'erreur à l'utilisateur
+            const container = document.querySelector('.container-fluid');
+            if (container) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'alert alert-danger mt-3';
+                errorDiv.innerHTML = '<i class="fa-solid fa-exclamation-triangle"></i> Erreur lors du chargement des statistiques. Veuillez réessayer.';
+                container.insertBefore(errorDiv, container.firstChild);
+            }
+        });
 });
 </script>
 

@@ -1,5 +1,6 @@
 package com.ecom.service.impl;
 
+import com.ecom.model.ProductOrder;
 import com.ecom.repository.CategoryRepository;
 import com.ecom.repository.ProductOrderRepository;
 import com.ecom.repository.ProductRepository;
@@ -58,9 +59,31 @@ public class StatisticsServiceImpl implements StatisticsService {
     @Override
     public Map<String, Long> getOrdersByStatus() {
         Map<String, Long> statusMap = new HashMap<>();
-        orderRepository.findAll().forEach(order ->
-            statusMap.merge(order.getStatus(), 1L, Long::sum)
-        );
+        List<String> validStatuses = Arrays.asList("En attente", "En cours", "Livré", "Annulé");
+
+        orderRepository.findAll().forEach(order -> {
+            String status = order.getStatus();
+            if (status != null && !status.trim().isEmpty()) {
+                // Normalize status to match expected values
+                if (status.equalsIgnoreCase("pending") || status.equalsIgnoreCase("en attente")) {
+                    statusMap.merge("En attente", 1L, Long::sum);
+                } else if (status.equalsIgnoreCase("processing") || status.equalsIgnoreCase("en cours")) {
+                    statusMap.merge("En cours", 1L, Long::sum);
+                } else if (status.equalsIgnoreCase("delivered") || status.equalsIgnoreCase("livré")) {
+                    statusMap.merge("Livré", 1L, Long::sum);
+                } else if (status.equalsIgnoreCase("cancelled") || status.equalsIgnoreCase("annulé")) {
+                    statusMap.merge("Annulé", 1L, Long::sum);
+                } else {
+                    statusMap.merge(status, 1L, Long::sum);
+                }
+            }
+        });
+
+        // Ensure all expected statuses are present with at least 0
+        for (String validStatus : validStatuses) {
+            statusMap.putIfAbsent(validStatus, 0L);
+        }
+
         return statusMap;
     }
 
@@ -68,10 +91,19 @@ public class StatisticsServiceImpl implements StatisticsService {
     public Map<String, Long> getProductsByCategory() {
         Map<String, Long> categoryMap = new HashMap<>();
         productRepository.findAll().forEach(product -> {
-            if (product.getCategory() != null && !product.getCategory().isEmpty()) {
-                categoryMap.merge(product.getCategory(), 1L, Long::sum);
+            String category = product.getCategory();
+            if (category != null && !category.trim().isEmpty()) {
+                categoryMap.merge(category, 1L, Long::sum);
+            } else {
+                categoryMap.merge("Sans catégorie", 1L, Long::sum);
             }
         });
+
+        // If no categories found, add a default entry
+        if (categoryMap.isEmpty()) {
+            categoryMap.put("Aucune catégorie", 0L);
+        }
+
         return categoryMap;
     }
 
@@ -84,9 +116,9 @@ public class StatisticsServiceImpl implements StatisticsService {
         for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {
             final LocalDate currentDate = date;
             long count = orderRepository.findAll().stream()
-                    .filter(order -> order.getOrderDate().equals(currentDate))
+                    .filter(order -> order.getOrderDate() != null && order.getOrderDate().equals(currentDate))
                     .count();
-            results.add(new Object[]{date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")), count});
+            results.add(new Object[]{date.format(DateTimeFormatter.ofPattern("dd/MM")), count});
         }
         return results;
     }
@@ -96,9 +128,11 @@ public class StatisticsServiceImpl implements StatisticsService {
         // Group orders by product and count quantities
         Map<String, Long> productSales = new HashMap<>();
         orderRepository.findAll().forEach(order -> {
-            String productName = order.getProduct().getTitle();
-            Long quantity = order.getQuantity() != null ? order.getQuantity().longValue() : 0L;
-            productSales.merge(productName, quantity, Long::sum);
+            if (order.getProduct() != null && order.getProduct().getTitle() != null) {
+                String productName = order.getProduct().getTitle();
+                Long quantity = order.getQuantity() != null ? order.getQuantity().longValue() : 0L;
+                productSales.merge(productName, quantity, Long::sum);
+            }
         });
 
         // Sort by sales count and take top products
@@ -119,5 +153,24 @@ public class StatisticsServiceImpl implements StatisticsService {
             labels.add(date.format(DateTimeFormatter.ofPattern("dd/MM")));
         }
         return labels;
+    }
+
+    @Override
+    public double getTotalRevenue() {
+        return orderRepository.findAll().stream()
+                .mapToDouble(order -> order.getPrice() != null ? order.getPrice() : 0.0)
+                .sum();
+    }
+
+    @Override
+    public double getAverageOrderValue() {
+        List<ProductOrder> orders = orderRepository.findAll();
+        if (orders.isEmpty()) {
+            return 0.0;
+        }
+        return orders.stream()
+                .mapToDouble(order -> order.getPrice() != null ? order.getPrice() : 0.0)
+                .average()
+                .orElse(0.0);
     }
 }
