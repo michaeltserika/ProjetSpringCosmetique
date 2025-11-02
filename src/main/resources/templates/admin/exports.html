@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org"
+	  th:replace="~{base::layout(~{::section})}">
+<head>
+	<meta charset="UTF-8">
+	<title>Exports - ShopFandresena</title>
+</head>
+<body>
+<section>
+	<div class="container p-5">
+		<h2 class="text-center mb-4">Export des Données</h2>
+
+		<div class="row">
+			<div class="col-md-6">
+				<div class="card modern-card">
+					<div class="card-header gradient-primary text-white">
+						<h5><i class="fa-solid fa-users"></i> Utilisateurs</h5>
+					</div>
+					<div class="card-body">
+						<p>Exporter la liste des utilisateurs au format souhaité.</p>
+						<div class="d-grid gap-2">
+							<a href="/admin/export/users/pdf" class="btn btn-danger">
+								<i class="fa-solid fa-file-pdf"></i> Exporter en PDF
+							</a>
+							<a href="/admin/export/users/excel" class="btn btn-success">
+								<i class="fa-solid fa-file-excel"></i> Exporter en Excel
+							</a>
+							<a href="/admin/export/users/csv" class="btn btn-info">
+								<i class="fa-solid fa-file-csv"></i> Exporter en CSV
+							</a>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-md-6">
+				<div class="card modern-card">
+					<div class="card-header gradient-success text-white">
+						<h5><i class="fa-solid fa-box"></i> Produits</h5>
+					</div>
+					<div class="card-body">
+						<p>Exporter le catalogue des produits.</p>
+						<div class="d-grid gap-2">
+							<a href="/admin/export/products/pdf" class="btn btn-danger">
+								<i class="fa-solid fa-file-pdf"></i> Exporter en PDF
+							</a>
+							<a href="/admin/export/products/excel" class="btn btn-success">
+								<i class="fa-solid fa-file-excel"></i> Exporter en Excel
+							</a>
+							<a href="/admin/export/products/csv" class="btn btn-info">
+								<i class="fa-solid fa-file-csv"></i> Exporter en CSV
+							</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="row mt-4">
+			<div class="col-md-6">
+				<div class="card modern-card">
+					<div class="card-header gradient-warning text-white">
+						<h5><i class="fa-solid fa-shopping-cart"></i> Commandes</h5>
+					</div>
+					<div class="card-body">
+						<p>Exporter l'historique des commandes.</p>
+						<div class="d-grid gap-2">
+							<a href="/admin/export/orders/pdf" class="btn btn-danger">
+								<i class="fa-solid fa-file-pdf"></i> Exporter en PDF
+							</a>
+							<a href="/admin/export/orders/excel" class="btn btn-success">
+								<i class="fa-solid fa-file-excel"></i> Exporter en Excel
+							</a>
+							<a href="/admin/export/orders/csv" class="btn btn-info">
+								<i class="fa-solid fa-file-csv"></i> Exporter en CSV
+							</a>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-md-6">
+				<div class="card modern-card">
+					<div class="card-header gradient-info text-white">
+						<h5><i class="fa-solid fa-tags"></i> Catégories</h5>
+					</div>
+					<div class="card-body">
+						<p>Exporter la liste des catégories.</p>
+						<div class="d-grid gap-2">
+							<a href="/admin/export/categories/pdf" class="btn btn-danger">
+								<i class="fa-solid fa-file-pdf"></i> Exporter en PDF
+							</a>
+							<a href="/admin/export/categories/excel" class="btn btn-success">
+								<i class="fa-solid fa-file-excel"></i> Exporter en Excel
+							</a>
+							<a href="/admin/export/categories/csv" class="btn btn-info">
+								<i class="fa-solid fa-file-csv"></i> Exporter en CSV
+							</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Custom Export Section -->
+		<div class="row mt-4">
+			<div class="col-12">
+				<div class="card modern-card">
+					<div class="card-header gradient-primary text-white">
+						<h5><i class="fa-solid fa-filter"></i> Export Personnalisé</h5>
+					</div>
+					<div class="card-body">
+						<form id="customExportForm">
+							<div class="row">
+								<div class="col-md-4">
+									<label for="exportType" class="form-label">Type de données</label>
+									<select class="form-select" id="exportType" name="exportType">
+										<option value="users">Utilisateurs</option>
+										<option value="products">Produits</option>
+										<option value="orders">Commandes</option>
+										<option value="categories">Catégories</option>
+									</select>
+								</div>
+								<div class="col-md-4">
+									<label for="format" class="form-label">Format</label>
+									<select class="form-select" id="format" name="format">
+										<option value="pdf">PDF</option>
+										<option value="excel">Excel</option>
+										<option value="csv">CSV</option>
+									</select>
+								</div>
+								<div class="col-md-4">
+									<label for="dateRange" class="form-label">Période (pour commandes)</label>
+									<select class="form-select" id="dateRange" name="dateRange">
+										<option value="all">Tout</option>
+										<option value="today">Aujourd'hui</option>
+										<option value="week">Cette semaine</option>
+										<option value="month">Ce mois</option>
+									</select>
+								</div>
+							</div>
+							<div class="d-grid mt-3">
+								<button type="submit" class="btn btn-primary">
+									<i class="fa-solid fa-download"></i> Générer l'export
+								</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<script>
+document.getElementById('customExportForm').addEventListener('submit', function(e) {
+	e.preventDefault();
+
+	const exportType = document.getElementById('exportType').value;
+	const format = document.getElementById('format').value;
+	const dateRange = document.getElementById('dateRange').value;
+
+	let url = `/admin/export/${exportType}/${format}`;
+	if (exportType === 'orders' && dateRange !== 'all') {
+		url += `?period=${dateRange}`;
+	}
+
+	window.location.href = url;
+});
+</script>
+</body>
+</html>

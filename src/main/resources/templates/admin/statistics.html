@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org"
+	  th:replace="~{base::layout(~{::section})}">
+<head>
+	<meta charset="UTF-8">
+	<title>Statistiques - ShopFandresena</title>
+	<!-- Chart.js -->
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<section>
+	<div class="container-fluid p-4">
+		<div class="row">
+			<div class="col-12">
+				<h2 class="text-center mb-4">Tableau de Bord Statistiques</h2>
+			</div>
+		</div>
+
+		<!-- Statistics Cards -->
+		<div class="row mb-4">
+			<div class="col-md-3">
+				<div class="card modern-card gradient-primary text-white shadow-lg">
+					<div class="card-body text-center">
+						<i class="fa-solid fa-shopping-cart fa-3x mb-3"></i>
+						<h5 class="fw-bold">Total Commandes</h5>
+						<h2 id="totalOrders" class="display-4 fw-bold" th:text="${totalOrders}">0</h2>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-3">
+				<div class="card modern-card gradient-success text-white shadow-lg">
+					<div class="card-body text-center">
+						<i class="fa-solid fa-box fa-3x mb-3"></i>
+						<h5 class="fw-bold">Total Produits</h5>
+						<h2 id="totalProducts" class="display-4 fw-bold" th:text="${totalProducts}">0</h2>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-3">
+				<div class="card modern-card gradient-warning text-white shadow-lg">
+					<div class="card-body text-center">
+						<i class="fa-solid fa-users fa-3x mb-3"></i>
+						<h5 class="fw-bold">Total Utilisateurs</h5>
+						<h2 id="totalUsers" class="display-4 fw-bold" th:text="${totalUsers}">0</h2>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-3">
+				<div class="card modern-card gradient-info text-white shadow-lg">
+					<div class="card-body text-center">
+						<i class="fa-solid fa-tags fa-3x mb-3"></i>
+						<h5 class="fw-bold">Total Catégories</h5>
+						<h2 id="totalCategories" class="display-4 fw-bold" th:text="${totalCategories}">0</h2>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Charts Row -->
+		<div class="row">
+			<div class="col-md-6">
+				<div class="card modern-card shadow-lg">
+					<div class="card-header bg-primary text-white">
+						<h5 class="mb-0"><i class="fa-solid fa-chart-pie me-2"></i>Répartition des Commandes par Statut</h5>
+					</div>
+					<div class="card-body">
+						<canvas id="ordersChart" style="max-height: 300px;"></canvas>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-6">
+				<div class="card modern-card shadow-lg">
+					<div class="card-header bg-success text-white">
+						<h5 class="mb-0"><i class="fa-solid fa-chart-bar me-2"></i>Produits par Catégorie</h5>
+					</div>
+					<div class="card-body">
+						<canvas id="categoriesChart" style="max-height: 300px;"></canvas>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<!-- Additional Charts -->
+		<div class="row mt-4">
+			<div class="col-md-6">
+				<div class="card modern-card shadow-lg">
+					<div class="card-header bg-warning text-dark">
+						<h5 class="mb-0"><i class="fa-solid fa-chart-line me-2"></i>Évolution des Commandes (30 derniers jours)</h5>
+					</div>
+					<div class="card-body">
+						<canvas id="ordersTrendChart" style="max-height: 300px;"></canvas>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-6">
+				<div class="card modern-card shadow-lg">
+					<div class="card-header bg-info text-white">
+						<h5 class="mb-0"><i class="fa-solid fa-trophy me-2"></i>Top 5 Produits les plus vendus</h5>
+					</div>
+					<div class="card-body">
+						<canvas id="topProductsChart" style="max-height: 300px;"></canvas>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+	console.log('Statistics page loaded, fetching data...');
+
+	// Fetch statistics data from API
+	fetch('/admin/api/statistics')
+		.then(response => {
+			if (!response.ok) {
+				throw new Error('Network response was not ok');
+			}
+			return response.json();
+		})
+		.then(data => {
+			console.log('Statistics data received:', data);
+			console.log('Data types and values:', {
+				totalOrders: data.totalOrders + ' (' + typeof data.totalOrders + ')',
+				totalProducts: data.totalProducts + ' (' + typeof data.totalProducts + ')',
+				totalUsers: data.totalUsers + ' (' + typeof data.totalUsers + ')',
+				totalCategories: data.totalCategories + ' (' + typeof data.totalCategories + ')',
+				pendingOrders: data.pendingOrders + ' (' + typeof data.pendingOrders + ')',
+				processingOrders: data.processingOrders + ' (' + typeof data.processingOrders + ')',
+				deliveredOrders: data.deliveredOrders + ' (' + typeof data.deliveredOrders + ')',
+				cancelledOrders: data.cancelledOrders + ' (' + typeof data.cancelledOrders + ')',
+				categoryNames: Array.isArray(data.categoryNames) ? data.categoryNames.length + ' items' : 'not array',
+				categoryCounts: Array.isArray(data.categoryCounts) ? data.categoryCounts.length + ' items' : 'not array',
+				last30Days: Array.isArray(data.last30Days) ? data.last30Days.length + ' items' : 'not array',
+				ordersPerDay: Array.isArray(data.ordersPerDay) ? data.ordersPerDay.length + ' items' : 'not array',
+				topProductNames: Array.isArray(data.topProductNames) ? data.topProductNames.length + ' items' : 'not array',
+				topProductSales: Array.isArray(data.topProductSales) ? data.topProductSales.length + ' items' : 'not array'
+			});
+
+			// Update statistics cards - only update if API data is different from server-side rendered data
+			const serverTotalOrders = parseInt(document.getElementById('totalOrders').textContent) || 0;
+			const serverTotalProducts = parseInt(document.getElementById('totalProducts').textContent) || 0;
+			const serverTotalUsers = parseInt(document.getElementById('totalUsers').textContent) || 0;
+			const serverTotalCategories = parseInt(document.getElementById('totalCategories').textContent) || 0;
+
+			if (data.totalOrders !== serverTotalOrders) {
+				document.getElementById('totalOrders').textContent = data.totalOrders || 0;
+			}
+			if (data.totalProducts !== serverTotalProducts) {
+				document.getElementById('totalProducts').textContent = data.totalProducts || 0;
+			}
+			if (data.totalUsers !== serverTotalUsers) {
+				document.getElementById('totalUsers').textContent = data.totalUsers || 0;
+			}
+			if (data.totalCategories !== serverTotalCategories) {
+				document.getElementById('totalCategories').textContent = data.totalCategories || 0;
+			}
+
+			// Chart colors
+			const chartColors = {
+				primary: '#007bff',
+				green: '#28a745',
+				blue: '#17a2b8',
+				red: '#dc3545',
+				yellow: '#ffc107'
+			};
+
+			// Orders Status Chart
+			const ordersCtx = document.getElementById('ordersChart');
+			if (ordersCtx) {
+				console.log('Creating orders chart with data:', [data.pendingOrders || 0, data.processingOrders || 0, data.deliveredOrders || 0, data.cancelledOrders || 0]);
+				new Chart(ordersCtx.getContext('2d'), {
+					type: 'doughnut',
+					data: {
+						labels: ['En attente', 'En cours', 'Livré', 'Annulé'],
+						datasets: [{
+							data: [data.pendingOrders || 0, data.processingOrders || 0, data.deliveredOrders || 0, data.cancelledOrders || 0],
+							backgroundColor: [chartColors.yellow, chartColors.blue, chartColors.green, chartColors.red],
+							borderWidth: 2,
+							borderColor: '#ffffff'
+						}]
+					},
+					options: {
+						responsive: true,
+						maintainAspectRatio: false,
+						plugins: {
+							legend: {
+								position: 'bottom',
+								labels: {
+									color: '#2c3e50'
+								}
+							}
+						}
+					}
+				});
+				console.log('Orders chart created successfully');
+			} else {
+				console.log('Orders chart canvas not found');
+			}
+
+			// Categories Chart
+			const categoriesCtx = document.getElementById('categoriesChart');
+			if (categoriesCtx && data.categoryNames && data.categoryCounts) {
+				console.log('Creating categories chart with data:', {
+					labels: data.categoryNames,
+					data: data.categoryCounts
+				});
+				new Chart(categoriesCtx.getContext('2d'), {
+					type: 'bar',
+					data: {
+						labels: data.categoryNames,
+						datasets: [{
+							label: 'Nombre de produits',
+							data: data.categoryCounts,
+							backgroundColor: chartColors.primary,
+							borderRadius: 8
+						}]
+					},
+					options: {
+						responsive: true,
+						maintainAspectRatio: false,
+						animation: { duration: 2000, easing: 'easeInOutQuart' },
+						scales: {
+							y: { beginAtZero: true },
+							x: { grid: { display: false } }
+						},
+						plugins: { legend: { display: false } }
+					}
+				});
+				console.log('Categories chart created successfully');
+			} else {
+				console.log('Categories chart not created - missing data or canvas:', {
+					canvas: !!categoriesCtx,
+					categoryNames: !!data.categoryNames,
+					categoryCounts: !!data.categoryCounts
+				});
+			}
+
+			// Orders Trend Chart
+			const trendCtx = document.getElementById('ordersTrendChart');
+			if (trendCtx && data.last30Days && data.ordersPerDay) {
+				console.log('Creating orders trend chart with data:', {
+					labels: data.last30Days.length + ' days',
+					data: data.ordersPerDay.length + ' values'
+				});
+				new Chart(trendCtx.getContext('2d'), {
+					type: 'line',
+					data: {
+						labels: data.last30Days,
+						datasets: [{
+							label: 'Commandes par jour',
+							data: data.ordersPerDay,
+							borderColor: chartColors.green,
+							backgroundColor: 'rgba(40, 167, 69, 0.1)',
+							tension: 0.4,
+							fill: true
+						}]
+					},
+					options: {
+						responsive: true,
+						scales: {
+							y: { beginAtZero: true }
+						}
+					}
+				});
+				console.log('Orders trend chart created successfully');
+			} else {
+				console.log('Orders trend chart not created - missing data or canvas:', {
+					canvas: !!trendCtx,
+					last30Days: !!data.last30Days,
+					ordersPerDay: !!data.ordersPerDay
+				});
+			}
+
+			// Top Products Chart
+			const topProductsCtx = document.getElementById('topProductsChart');
+			if (topProductsCtx && data.topProductNames && data.topProductSales) {
+				console.log('Creating top products chart with data:', {
+					labels: data.topProductNames,
+					data: data.topProductSales
+				});
+				new Chart(topProductsCtx.getContext('2d'), {
+					type: 'bar',
+					data: {
+						labels: data.topProductNames,
+						datasets: [{
+							label: 'Ventes',
+							data: data.topProductSales,
+							backgroundColor: chartColors.yellow,
+							borderColor: '#e0a800',
+							borderWidth: 1
+						}]
+					},
+					options: {
+						indexAxis: 'y',
+						responsive: true,
+						scales: {
+							x: { beginAtZero: true }
+						}
+					}
+				});
+				console.log('Top products chart created successfully');
+			} else {
+				console.log('Top products chart not created - missing data or canvas:', {
+					canvas: !!topProductsCtx,
+					topProductNames: !!data.topProductNames,
+					topProductSales: !!data.topProductSales
+				});
+			}
+
+		})
+		.catch(error => {
+			console.error('Error fetching statistics data:', error);
+			// Show error message to user
+			document.querySelectorAll('canvas').forEach(function(canvas) {
+				var ctx = canvas.getContext('2d');
+				ctx.font = '16px Arial';
+				ctx.fillStyle = '#666';
+				ctx.textAlign = 'center';
+				ctx.fillText('Erreur de chargement des données', canvas.width / 2, canvas.height / 2);
+			});
+		});
+});
+</script>
+</body>
+</html>

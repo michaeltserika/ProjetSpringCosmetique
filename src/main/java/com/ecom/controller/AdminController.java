@@ -7,7 +7,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.Principal;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ClassPathResource;
@@ -25,13 +28,16 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.ecom.model.Category;
+import jakarta.servlet.http.HttpServletResponse;
 import com.ecom.model.Product;
 import com.ecom.model.ProductOrder;
 import com.ecom.model.UserDtls;
 import com.ecom.service.CartService;
 import com.ecom.service.CategoryService;
+import com.ecom.service.ExportService;
 import com.ecom.service.OrderService;
 import com.ecom.service.ProductService;
+import com.ecom.service.StatisticsService;
 import com.ecom.service.UserService;
 import com.ecom.util.CommonUtil;
 import com.ecom.util.OrderStatus;
@@ -62,6 +68,12 @@ public class AdminController {
 
 	@Autowired
 	private PasswordEncoder passwordEncoder;
+
+	@Autowired
+	private ExportService exportService;
+
+	@Autowired
+	private StatisticsService statisticsService;
 
 	@ModelAttribute
 	public void getUserDetails(Principal p, Model m) {
@@ -245,6 +257,8 @@ public class AdminController {
 			page = productService.getAllProductsPagination(pageNo, pageSize);
 		}
 		m.addAttribute("products", page.getContent());
+
+		System.out.println("AdminController.loadViewProduct(): Found " + page.getContent().size() + " products on this page, total: " + page.getTotalElements());
 
 		m.addAttribute("pageNo", page.getNumber());
 		m.addAttribute("pageSize", pageSize);
@@ -471,6 +485,149 @@ public class AdminController {
 		}
 
 		return "redirect:/admin/profile";
+	}
+
+	@GetMapping("/statistics")
+	public String showStatistics(Model m) {
+		// Load initial statistics data for server-side rendering
+		System.out.println("AdminController.showStatistics() called");
+		long totalOrders = statisticsService.getTotalOrders();
+		long totalProducts = statisticsService.getTotalProducts();
+		long totalUsers = statisticsService.getTotalUsers();
+		long totalCategories = statisticsService.getTotalCategories();
+
+		System.out.println("Controller - totalOrders: " + totalOrders);
+		System.out.println("Controller - totalProducts: " + totalProducts);
+		System.out.println("Controller - totalUsers: " + totalUsers);
+		System.out.println("Controller - totalCategories: " + totalCategories);
+
+		m.addAttribute("totalOrders", totalOrders);
+		m.addAttribute("totalProducts", totalProducts);
+		m.addAttribute("totalUsers", totalUsers);
+		m.addAttribute("totalCategories", totalCategories);
+		return "admin/statistics";
+	}
+
+	@GetMapping("/api/statistics")
+	public Map<String, Object> getStatisticsData() {
+		Map<String, Object> data = new HashMap<>();
+
+		// Basic stats
+		data.put("totalOrders", statisticsService.getTotalOrders());
+		data.put("totalProducts", statisticsService.getTotalProducts());
+		data.put("totalUsers", statisticsService.getTotalUsers());
+		data.put("totalCategories", statisticsService.getTotalCategories());
+
+		// Orders by status
+		Map<String, Long> ordersByStatus = statisticsService.getOrdersByStatus();
+		data.put("pendingOrders", ordersByStatus.getOrDefault("En attente", 0L));
+		data.put("processingOrders", ordersByStatus.getOrDefault("En cours", 0L));
+		data.put("deliveredOrders", ordersByStatus.getOrDefault("Livré", 0L));
+		data.put("cancelledOrders", ordersByStatus.getOrDefault("Annulé", 0L));
+
+		// Products by category
+		Map<String, Long> productsByCategory = statisticsService.getProductsByCategory();
+		data.put("categoryNames", new ArrayList<>(productsByCategory.keySet()));
+		data.put("categoryCounts", new ArrayList<>(productsByCategory.values()));
+
+		// Orders trend
+		List<Object[]> ordersTrend = statisticsService.getOrdersTrendLast30Days();
+		List<String> dates = ordersTrend.stream().map(arr -> (String) arr[0]).toList();
+		List<Long> counts = ordersTrend.stream().map(arr -> (Long) arr[1]).toList();
+		data.put("last30Days", dates);
+		data.put("ordersPerDay", counts);
+
+		// Top products
+		List<Object[]> topProducts = statisticsService.getTopSellingProducts(5);
+		List<String> productNames = topProducts.stream().map(arr -> (String) arr[0]).toList();
+		List<Long> productSales = topProducts.stream().map(arr -> (Long) arr[1]).toList();
+		data.put("topProductNames", productNames);
+		data.put("topProductSales", productSales);
+
+		return data;
+	}
+
+	@GetMapping("/exports")
+	public String showExports() {
+		return "admin/exports";
+	}
+
+	@GetMapping("/calculator")
+	public String showCalculator() {
+		return "admin/calculator";
+	}
+
+	// Export endpoints
+	@GetMapping("/export/users/pdf")
+	public void exportUsersToPDF(HttpServletResponse response) throws Exception {
+		List<UserDtls> users = userService.getUsers("ROLE_USER");
+		exportService.exportUsersToPDF(users, response);
+	}
+
+	@GetMapping("/export/users/excel")
+	public void exportUsersToExcel(HttpServletResponse response) throws Exception {
+		List<UserDtls> users = userService.getUsers("ROLE_USER");
+		exportService.exportUsersToExcel(users, response);
+	}
+
+	@GetMapping("/export/users/csv")
+	public void exportUsersToCSV(HttpServletResponse response) throws Exception {
+		List<UserDtls> users = userService.getUsers("ROLE_USER");
+		exportService.exportUsersToCSV(users, response);
+	}
+
+	@GetMapping("/export/products/pdf")
+	public void exportProductsToPDF(HttpServletResponse response) throws Exception {
+		List<Product> products = productService.getAllProducts();
+		exportService.exportProductsToPDF(products, response);
+	}
+
+	@GetMapping("/export/products/excel")
+	public void exportProductsToExcel(HttpServletResponse response) throws Exception {
+		List<Product> products = productService.getAllProducts();
+		exportService.exportProductsToExcel(products, response);
+	}
+
+	@GetMapping("/export/products/csv")
+	public void exportProductsToCSV(HttpServletResponse response) throws Exception {
+		List<Product> products = productService.getAllProducts();
+		exportService.exportProductsToCSV(products, response);
+	}
+
+	@GetMapping("/export/orders/pdf")
+	public void exportOrdersToPDF(HttpServletResponse response) throws Exception {
+		List<ProductOrder> orders = orderService.getAllOrders();
+		exportService.exportOrdersToPDF(orders, response);
+	}
+
+	@GetMapping("/export/orders/excel")
+	public void exportOrdersToExcel(HttpServletResponse response) throws Exception {
+		List<ProductOrder> orders = orderService.getAllOrders();
+		exportService.exportOrdersToExcel(orders, response);
+	}
+
+	@GetMapping("/export/orders/csv")
+	public void exportOrdersToCSV(HttpServletResponse response) throws Exception {
+		List<ProductOrder> orders = orderService.getAllOrders();
+		exportService.exportOrdersToCSV(orders, response);
+	}
+
+	@GetMapping("/export/categories/pdf")
+	public void exportCategoriesToPDF(HttpServletResponse response) throws Exception {
+		List<Category> categories = categoryService.getAllCategory();
+		exportService.exportCategoriesToPDF(categories, response);
+	}
+
+	@GetMapping("/export/categories/excel")
+	public void exportCategoriesToExcel(HttpServletResponse response) throws Exception {
+		List<Category> categories = categoryService.getAllCategory();
+		exportService.exportCategoriesToExcel(categories, response);
+	}
+
+	@GetMapping("/export/categories/csv")
+	public void exportCategoriesToCSV(HttpServletResponse response) throws Exception {
+		List<Category> categories = categoryService.getAllCategory();
+		exportService.exportCategoriesToCSV(categories, response);
 	}
 
 }
