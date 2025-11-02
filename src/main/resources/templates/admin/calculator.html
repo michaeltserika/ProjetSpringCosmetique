@@ -1,621 +1,154 @@
 <!DOCTYPE html>
-<html lang="fr" xmlns:th="http://www.thymeleaf.org"
-	  th:replace="~{base::layout(~{::section})}">
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+
 <head>
 	<meta charset="UTF-8">
 	<title>Calculateur - ShopFandresena</title>
 	<style>
-		.spreadsheet {
-			border-collapse: collapse;
-			width: 100%;
-			margin-top: 20px;
+		.calculator-container {
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			min-height: 70vh;
+			padding: 20px;
 		}
-		.spreadsheet th, .spreadsheet td {
-			border: 1px solid var(--border-color);
-			padding: 8px;
-			text-align: center;
-			min-width: 100px;
+		.calculator-body {
+			width: 320px;
+			background:#2c3e50;
+			border-radius:15px;
+			padding:20px;
+			box-shadow:0 8px 25px rgba(0,0,0,0.3);
+			margin: 0 auto;
 		}
-		.spreadsheet th {
-			background-color: var(--secondary-color);
+		.calculator-screen {
+			background:#111;
+			color:#0f0;
+			font-family:'Courier New', monospace;
+			font-size:28px;
+			text-align:right;
+			padding:15px;
+			border-radius:8px;
+			margin-bottom:15px;
+			overflow:hidden;
+			min-height: 50px;
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+		}
+		.calculator-buttons {
+			display:grid;
+			grid-template-columns: repeat(4,1fr);
+			gap:10px;
+		}
+		.calc-btn {
+			padding:18px 0;
+			font-size:18px;
+			border:none;
+			border-radius:8px;
+			cursor:pointer;
+			color:#fff;
+			background:#34495e;
+			transition:0.2s;
 			font-weight: bold;
 		}
-		.cell-input {
-			width: 100%;
-			border: none;
-			background: transparent;
-			text-align: center;
-			color: var(--text-color);
-			padding: 8px 4px;
-			font-size: 14px;
-			font-family: 'Courier New', monospace;
+		.calc-btn:hover {
+			background:#3d566e;
+			transform: translateY(-2px);
 		}
-		.cell-input:focus {
-			outline: 2px solid var(--primary-color);
-			background: rgba(0, 123, 255, 0.1);
+		.calc-btn:active {
+			transform: translateY(0);
 		}
-		.cell-selected {
-			background: rgba(0, 123, 255, 0.2) !important;
+		.operator-btn {
+			background:#e74c3c;
 		}
-		.cell-formula {
-			color: #007bff;
-			font-weight: bold;
+		.operator-btn:hover {
+			background:#ec7063;
 		}
-		.cell-error {
-			color: #dc3545;
-			background: rgba(220, 53, 69, 0.1);
+		.equals-btn {
+			background:#27ae60;
 		}
-		.cell-highlight {
-			background: rgba(255, 193, 7, 0.2) !important;
-			border: 2px solid #ffc107 !important;
-		}
-		.toolbar {
-			background: var(--card-bg);
-			border: 1px solid var(--border-color);
-			border-radius: 8px;
-			padding: 15px;
-			margin-bottom: 20px;
-		}
-		.formula-bar {
-			margin-bottom: 10px;
-		}
-		.function-buttons {
-			margin-bottom: 20px;
+		.equals-btn:hover {
+			background:#58d68d;
 		}
 		.function-btn {
-			margin: 2px;
-			padding: 5px 10px;
-			border: 1px solid var(--border-color);
-			background-color: var(--card-bg);
-			color: var(--text-color);
-			border-radius: 4px;
-			cursor: pointer;
+			background:#95a5a6;
+			color:#2c3e50;
 		}
-		.function-btn:hover {
-			background-color: var(--secondary-color);
+		.zero-btn {
+			grid-column: span 2;
 		}
 	</style>
 </head>
-<body>
+
+<body th:replace="~{base::layout(~{::section})}">
 <section>
-	<div class="container p-5">
-		<h2 class="text-center mb-4">Calculateur Excel-like</h2>
+	<div class="calculator-container">
+		<div class="calculator-body">
+			<div id="calculatorDisplay" class="calculator-screen">0</div>
+			<div class="calculator-buttons">
+				<button class="calc-btn function-btn" onclick="clearAll()">AC</button>
+				<button class="calc-btn function-btn" onclick="toggleSign()">±</button>
+				<button class="calc-btn operator-btn" onclick="setOperation('/')">÷</button>
+				<button class="calc-btn operator-btn" onclick="setOperation('*')">×</button>
 
-		<!-- Formula Bar -->
-		<div class="formula-bar">
-			<div class="input-group">
-				<span class="input-group-text">Formule:</span>
-				<input type="text" class="form-control" id="formulaBar" readonly>
-			</div>
-		</div>
+				<button class="calc-btn" onclick="appendNumber('7')">7</button>
+				<button class="calc-btn" onclick="appendNumber('8')">8</button>
+				<button class="calc-btn" onclick="appendNumber('9')">9</button>
+				<button class="calc-btn operator-btn" onclick="setOperation('-')">−</button>
 
-		<!-- Toolbar -->
-		<div class="toolbar mb-3">
-			<div class="row g-2 align-items-center">
-				<div class="col-auto">
-					<div class="input-group">
-						<span class="input-group-text bg-primary text-white">Cellule active:</span>
-						<input type="text" class="form-control" id="activeCell" readonly style="max-width: 80px;">
-					</div>
-				</div>
-				<div class="col">
-					<div class="input-group">
-						<span class="input-group-text">Formule:</span>
-						<input type="text" class="form-control" id="formulaInput" placeholder="Entrez une formule ou une valeur">
-						<button class="btn btn-success" onclick="applyFormula()">Appliquer</button>
-					</div>
-				</div>
-				<div class="col-auto">
-					<button class="btn btn-warning me-2" onclick="clearSpreadsheet()">
-						<i class="fa-solid fa-trash"></i> Effacer Tout
-					</button>
-					<button class="btn btn-info me-2" onclick="saveSpreadsheet()">
-						<i class="fa-solid fa-save"></i> Sauvegarder
-					</button>
-					<button class="btn btn-secondary me-2" onclick="loadSpreadsheet()">
-						<i class="fa-solid fa-folder-open"></i> Charger
-					</button>
-					<button class="btn btn-success" onclick="exportToCSV()">
-						<i class="fa-solid fa-file-csv"></i> Exporter CSV
-					</button>
-				</div>
-			</div>
-		</div>
+				<button class="calc-btn" onclick="appendNumber('4')">4</button>
+				<button class="calc-btn" onclick="appendNumber('5')">5</button>
+				<button class="calc-btn" onclick="appendNumber('6')">6</button>
+				<button class="calc-btn operator-btn" onclick="setOperation('+')">+</button>
 
-		<!-- Function Buttons -->
-		<div class="function-buttons mb-3">
-			<div class="row g-1">
-				<div class="col-auto">
-					<strong class="me-3">Fonctions:</strong>
-				</div>
-				<div class="col-auto">
-					<button class="function-btn" onclick="insertFunction('SUM')">SUM</button>
-				</div>
-				<div class="col-auto">
-					<button class="function-btn" onclick="insertFunction('AVERAGE')">AVERAGE</button>
-				</div>
-				<div class="col-auto">
-					<button class="function-btn" onclick="insertFunction('MAX')">MAX</button>
-				</div>
-				<div class="col-auto">
-					<button class="function-btn" onclick="insertFunction('MIN')">MIN</button>
-				</div>
-				<div class="col-auto">
-					<button class="function-btn" onclick="insertFunction('COUNT')">COUNT</button>
-				</div>
-				<div class="col-auto">
-					<button class="function-btn" onclick="insertFunction('IF')">IF</button>
-				</div>
-				<div class="col-auto">
-					<button class="function-btn" onclick="insertFunction('CONCATENATE')">CONCAT</button>
-				</div>
-			</div>
-		</div>
+				<button class="calc-btn" onclick="appendNumber('1')">1</button>
+				<button class="calc-btn" onclick="appendNumber('2')">2</button>
+				<button class="calc-btn" onclick="appendNumber('3')">3</button>
+				<button class="calc-btn equals-btn" onclick="calculateResult()">=</button>
 
-		<!-- Spreadsheet -->
-		<div class="table-responsive">
-			<table class="spreadsheet" id="spreadsheet">
-				<thead>
-					<tr>
-						<th></th>
-						<th>A</th>
-						<th>B</th>
-						<th>C</th>
-						<th>D</th>
-						<th>E</th>
-						<th>F</th>
-						<th>G</th>
-						<th>H</th>
-						<th>I</th>
-						<th>J</th>
-					</tr>
-				</thead>
-				<tbody id="spreadsheetBody">
-					<!-- Rows will be generated by JavaScript -->
-				</tbody>
-			</table>
-		</div>
-
-		<!-- Instructions -->
-		<div class="card mt-4 modern-card">
-			<div class="card-header bg-info text-white">
-				<h5 class="mb-0"><i class="fa-solid fa-question-circle me-2"></i>Guide d'utilisation Excel-like</h5>
-			</div>
-			<div class="card-body">
-				<div class="row">
-					<div class="col-md-6">
-						<h6><i class="fa-solid fa-keyboard me-2"></i>Raccourcis clavier</h6>
-						<ul class="small">
-							<li><kbd>↑↓←→</kbd> : Navigation entre cellules</li>
-							<li><kbd>Entrée</kbd> : Aller à la cellule du dessous</li>
-							<li><kbd>F2</kbd> ou double-clic : Éditer la cellule</li>
-							<li><kbd>Échap</kbd> : Annuler l'édition</li>
-						</ul>
-					</div>
-					<div class="col-md-6">
-						<h6><i class="fa-solid fa-calculator me-2"></i>Formules et fonctions</h6>
-						<ul class="small">
-							<li><strong>Arithmétique :</strong> =A1+B1, =A1*B1, =A1/B1</li>
-							<li><strong>Fonctions :</strong> SUM, AVERAGE, MAX, MIN, COUNT</li>
-							<li><strong>Logique :</strong> IF(condition, vrai, faux)</li>
-							<li><strong>Texte :</strong> CONCATENATE(texte1, texte2)</li>
-							<li><strong>Plages :</strong> A1:B5 pour plusieurs cellules</li>
-						</ul>
-					</div>
-				</div>
-				<hr>
-				<div class="row">
-					<div class="col-md-6">
-						<h6><i class="fa-solid fa-save me-2"></i>Sauvegarde</h6>
-						<p class="small mb-0">Vos données sont automatiquement sauvegardées dans le navigateur.</p>
-					</div>
-					<div class="col-md-6">
-						<h6><i class="fa-solid fa-file-export me-2"></i>Export</h6>
-						<p class="small mb-0">Exportez vos calculs au format CSV pour Excel.</p>
-					</div>
-				</div>
+				<button class="calc-btn zero-btn" onclick="appendNumber('0')">0</button>
+				<button class="calc-btn" onclick="appendDecimal()">.</button>
 			</div>
 		</div>
 	</div>
 </section>
 
 <script>
-let currentCell = null;
-let selectedCell = null;
-let data = {};
-let formulas = {};
-let cellStyles = {};
-const rows = 20;
-const cols = 10;
+let displayValue='0', firstOperand=null, waitingForSecondOperand=false, operator=null;
 
-// Initialize spreadsheet
-function initSpreadsheet() {
-	const tbody = document.getElementById('spreadsheetBody');
+function updateDisplay(){ document.getElementById('calculatorDisplay').textContent = displayValue; }
 
-	for (let i = 1; i <= rows; i++) {
-		const row = document.createElement('tr');
-		const rowHeader = document.createElement('th');
-		rowHeader.textContent = i;
-		row.appendChild(rowHeader);
+function appendNumber(num){ displayValue=waitingForSecondOperand ? num : displayValue==='0'?num:displayValue+num; waitingForSecondOperand=false; updateDisplay(); }
 
-		for (let j = 0; j < cols; j++) {
-			const cell = document.createElement('td');
-			const input = document.createElement('input');
-			input.type = 'text';
-			input.className = 'cell-input';
-			input.dataset.row = i;
-			input.dataset.col = j;
+function appendDecimal(){ if(waitingForSecondOperand){ displayValue='0.'; waitingForSecondOperand=false; } else if(!displayValue.includes('.')) displayValue+='.'; updateDisplay(); }
 
-			input.addEventListener('focus', function() {
-				if (selectedCell) {
-					selectedCell.classList.remove('cell-selected');
-				}
-				selectedCell = this;
-				this.classList.add('cell-selected');
-				currentCell = this;
-
-				const cellRef = getCellReference(i, j);
-				document.getElementById('activeCell').value = cellRef;
-				document.getElementById('formulaInput').value = formulas[cellRef] || this.value;
-
-				// Highlight dependent cells
-				highlightDependentCells(cellRef);
-			});
-
-			input.addEventListener('input', function() {
-				const cellRef = getCellReference(i, j);
-				const value = this.value;
-
-				if (value.startsWith('=')) {
-					formulas[cellRef] = value;
-					this.classList.add('cell-formula');
-					try {
-						this.value = evaluateFormula(value.substring(1));
-						this.classList.remove('cell-error');
-					} catch (e) {
-						this.classList.add('cell-error');
-						this.value = '#ERROR';
-					}
-				} else {
-					delete formulas[cellRef];
-					data[cellRef] = value;
-					this.classList.remove('cell-formula', 'cell-error');
-				}
-
-				document.getElementById('formulaInput').value = formulas[cellRef] || this.value;
-				updateDependentCells();
-			});
-
-			input.addEventListener('keydown', function(e) {
-				const currentRow = parseInt(this.dataset.row);
-				const currentCol = parseInt(this.dataset.col);
-
-				switch(e.key) {
-					case 'ArrowUp':
-						e.preventDefault();
-						if (currentRow > 1) {
-							document.querySelector(`input[data-row="${currentRow-1}"][data-col="${currentCol}"]`).focus();
-						}
-						break;
-					case 'ArrowDown':
-						e.preventDefault();
-						if (currentRow < rows) {
-							document.querySelector(`input[data-row="${currentRow+1}"][data-col="${currentCol}"]`).focus();
-						}
-						break;
-					case 'ArrowLeft':
-						e.preventDefault();
-						if (currentCol > 0) {
-							document.querySelector(`input[data-row="${currentRow}"][data-col="${currentCol-1}"]`).focus();
-						}
-						break;
-					case 'ArrowRight':
-						e.preventDefault();
-						if (currentCol < cols-1) {
-							document.querySelector(`input[data-row="${currentRow}"][data-col="${currentCol+1}"]`).focus();
-						}
-						break;
-					case 'Enter':
-						e.preventDefault();
-						if (currentRow < rows) {
-							document.querySelector(`input[data-row="${currentRow+1}"][data-col="${currentCol}"]`).focus();
-						}
-						break;
-				}
-			});
-
-			cell.appendChild(input);
-			row.appendChild(cell);
-		}
-		tbody.appendChild(row);
-	}
+function setOperation(nextOp){
+    const input=parseFloat(displayValue);
+    if(firstOperand===null) firstOperand=input;
+    else if(operator){ firstOperand=calculate(firstOperand,input,operator); displayValue=String(firstOperand); }
+    operator=nextOp; waitingForSecondOperand=true; updateDisplay();
 }
 
-function getCellReference(row, col) {
-	const colLetter = String.fromCharCode(65 + col);
-	return colLetter + row;
+function calculate(a,b,op){ switch(op){ case '+': return a+b; case '-': return a-b; case '*': return a*b; case '/': return a/b; default: return b; } }
+
+function calculateResult(){ if(firstOperand!==null && operator){ displayValue=String(calculate(firstOperand,parseFloat(displayValue),operator)); firstOperand=null; operator=null; waitingForSecondOperand=false; updateDisplay(); } }
+
+function clearAll(){ displayValue='0'; firstOperand=null; operator=null; waitingForSecondOperand=false; updateDisplay(); }
+
+function toggleSign(){ displayValue=(parseFloat(displayValue)*-1).toString(); updateDisplay(); }
+
+function handleKeyboard(e){
+    if(e.key>='0' && e.key<='9') appendNumber(e.key);
+    else if(e.key==='.') appendDecimal();
+    else if(e.key==='+'||e.key==='-'||e.key==='*'||e.key==='/') setOperation(e.key);
+    else if(e.key==='Enter') calculateResult();
+    else if(e.key==='Backspace') displayValue=displayValue.slice(0,-1)||'0',updateDisplay();
+    else if(e.key==='c' || e.key==='C') clearAll();
+    else if(e.key==='s' || e.key==='S') toggleSign();
 }
 
-function evaluateFormula(formula) {
-	try {
-		// Replace cell references with values
-		formula = formula.replace(/([A-J]\d+)(?::([A-J]\d+))?/g, function(match, start, end) {
-			if (end) {
-				// Range like A1:B3
-				return getRangeValues(start, end);
-			} else {
-				// Single cell
-				return parseFloat(data[start]) || 0;
-			}
-		});
-
-		// Evaluate functions
-		if (formula.toUpperCase().includes('SUM(')) {
-			return evalSum(formula);
-		} else if (formula.toUpperCase().includes('AVERAGE(')) {
-			return evalAverage(formula);
-		} else if (formula.toUpperCase().includes('MAX(')) {
-			return evalMax(formula);
-		} else if (formula.toUpperCase().includes('MIN(')) {
-			return evalMin(formula);
-		} else if (formula.toUpperCase().includes('COUNT(')) {
-			return evalCount(formula);
-		} else if (formula.toUpperCase().includes('IF(')) {
-			return evalIf(formula);
-		} else if (formula.toUpperCase().includes('CONCATENATE(') || formula.toUpperCase().includes('CONCAT(')) {
-			return evalConcatenate(formula);
-		}
-
-		// Simple arithmetic
-		return eval(formula);
-	} catch (e) {
-		return '#ERROR';
-	}
-}
-
-function evalIf(formula) {
-	const match = formula.match(/IF\(([^,]+),\s*([^,]+),\s*([^)]+)\)/i);
-	if (match) {
-		const condition = match[1].trim();
-		const trueValue = match[2].trim();
-		const falseValue = match[3].trim();
-
-		try {
-			const conditionResult = eval(condition.replace(/([A-J]\d+)/g, (match) => parseFloat(data[match]) || 0));
-			return conditionResult ? eval(trueValue.replace(/([A-J]\d+)/g, (match) => parseFloat(data[match]) || 0)) :
-									eval(falseValue.replace(/([A-J]\d+)/g, (match) => parseFloat(data[match]) || 0));
-		} catch (e) {
-			return '#ERROR';
-		}
-	}
-	return '#ERROR';
-}
-
-function evalConcatenate(formula) {
-	const match = formula.match(/(?:CONCATENATE|CONCAT)\(([^)]+)\)/i);
-	if (match) {
-		const args = match[1].split(',').map(arg => {
-			arg = arg.trim();
-			if (arg.match(/^[A-J]\d+$/)) {
-				return data[arg] || '';
-			} else if (arg.startsWith('"') && arg.endsWith('"')) {
-				return arg.slice(1, -1);
-			}
-			return arg;
-		});
-		return args.join('');
-	}
-	return '#ERROR';
-}
-
-function getRangeValues(start, end) {
-	const startCol = start.charCodeAt(0) - 65;
-	const startRow = parseInt(start.substring(1)) - 1;
-	const endCol = end.charCodeAt(0) - 65;
-	const endRow = parseInt(end.substring(1)) - 1;
-
-	const values = [];
-	for (let r = startRow; r <= endRow; r++) {
-		for (let c = startCol; c <= endCol; c++) {
-			const cellRef = getCellReference(r + 1, c);
-			const value = parseFloat(data[cellRef]) || 0;
-			values.push(value);
-		}
-	}
-	return values.join(',');
-}
-
-function evalSum(formula) {
-	const match = formula.match(/SUM\(([^)]+)\)/);
-	if (match) {
-		const values = match[1].split(',').map(v => parseFloat(v.trim()) || 0);
-		return values.reduce((a, b) => a + b, 0);
-	}
-	return 0;
-}
-
-function evalAverage(formula) {
-	const match = formula.match(/AVERAGE\(([^)]+)\)/);
-	if (match) {
-		const values = match[1].split(',').map(v => parseFloat(v.trim()) || 0);
-		return values.reduce((a, b) => a + b, 0) / values.length;
-	}
-	return 0;
-}
-
-function evalMax(formula) {
-	const match = formula.match(/MAX\(([^)]+)\)/);
-	if (match) {
-		const values = match[1].split(',').map(v => parseFloat(v.trim()) || 0);
-		return Math.max(...values);
-	}
-	return 0;
-}
-
-function evalMin(formula) {
-	const match = formula.match(/MIN\(([^)]+)\)/);
-	if (match) {
-		const values = match[1].split(',').map(v => parseFloat(v.trim()) || 0);
-		return Math.min(...values);
-	}
-	return 0;
-}
-
-function evalCount(formula) {
-	const match = formula.match(/COUNT\(([^)]+)\)/);
-	if (match) {
-		const values = match[1].split(',').filter(v => !isNaN(parseFloat(v.trim())));
-		return values.length;
-	}
-	return 0;
-}
-
-function updateDependentCells() {
-	// This is a simplified version - in a real spreadsheet, you'd need to track dependencies
-	const inputs = document.querySelectorAll('.cell-input');
-	inputs.forEach(input => {
-		if (input.value.startsWith('=')) {
-			input.value = evaluateFormula(input.value.substring(1));
-		}
-	});
-}
-
-function insertFunction(funcName) {
-	if (currentCell) {
-		const formulaInput = document.getElementById('formulaInput');
-		formulaInput.value = `=${funcName}()`;
-		formulaInput.focus();
-		// Position cursor inside parentheses
-		setTimeout(() => {
-			formulaInput.setSelectionRange(formulaInput.value.length - 1, formulaInput.value.length - 1);
-		}, 0);
-	}
-}
-
-function applyFormula() {
-	if (currentCell) {
-		const formulaInput = document.getElementById('formulaInput');
-		currentCell.value = formulaInput.value;
-		currentCell.focus();
-		// Trigger input event to process the formula
-		currentCell.dispatchEvent(new Event('input'));
-	}
-}
-
-function highlightDependentCells(cellRef) {
-	// Remove previous highlights
-	document.querySelectorAll('.cell-highlight').forEach(cell => {
-		cell.classList.remove('cell-highlight');
-	});
-
-	// Find cells that reference the current cell
-	const allCells = document.querySelectorAll('.cell-input');
-	allCells.forEach(cell => {
-		const cellFormula = formulas[getCellReference(cell.dataset.row, cell.dataset.col)];
-		if (cellFormula && cellFormula.includes(cellRef)) {
-			cell.classList.add('cell-highlight');
-		}
-	});
-}
-
-function saveSpreadsheet() {
-	const spreadsheetData = {
-		data: data,
-		formulas: formulas,
-		styles: cellStyles,
-		timestamp: new Date().toISOString()
-	};
-
-	localStorage.setItem('excelCalculator', JSON.stringify(spreadsheetData));
-
-	// Show success message
-	showMessage('Feuille sauvegardée avec succès!', 'success');
-}
-
-function loadSpreadsheet() {
-	const savedData = localStorage.getItem('excelCalculator');
-	if (savedData) {
-		const spreadsheetData = JSON.parse(savedData);
-		data = spreadsheetData.data || {};
-		formulas = spreadsheetData.formulas || {};
-		cellStyles = spreadsheetData.styles || {};
-
-		// Refresh all cells
-		const allCells = document.querySelectorAll('.cell-input');
-		allCells.forEach(cell => {
-			const cellRef = getCellReference(cell.dataset.row, cell.dataset.col);
-			const formula = formulas[cellRef];
-			if (formula) {
-				cell.value = evaluateFormula(formula.substring(1));
-				cell.classList.add('cell-formula');
-			} else {
-				cell.value = data[cellRef] || '';
-				cell.classList.remove('cell-formula');
-			}
-		});
-
-		showMessage('Feuille chargée avec succès!', 'success');
-	} else {
-		showMessage('Aucune sauvegarde trouvée.', 'warning');
-	}
-}
-
-function showMessage(message, type) {
-	// Create message element
-	const messageEl = document.createElement('div');
-	messageEl.className = `alert alert-${type} position-fixed`;
-	messageEl.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
-	messageEl.innerHTML = `
-		${message}
-		<button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
-	`;
-
-	document.body.appendChild(messageEl);
-
-	// Auto remove after 3 seconds
-	setTimeout(() => {
-		if (messageEl.parentElement) {
-			messageEl.remove();
-		}
-	}, 3000);
-}
-
-function clearSpreadsheet() {
-	const inputs = document.querySelectorAll('.cell-input');
-	inputs.forEach(input => {
-		input.value = '';
-	});
-	data = {};
-	document.getElementById('formulaBar').value = '';
-}
-
-function exportToCSV() {
-	let csv = 'Row,';
-	for (let j = 0; j < cols; j++) {
-		csv += String.fromCharCode(65 + j) + ',';
-	}
-	csv = csv.slice(0, -1) + '\n';
-
-	for (let i = 1; i <= rows; i++) {
-		csv += i + ',';
-		for (let j = 0; j < cols; j++) {
-			const cellRef = getCellReference(i, j);
-			csv += (data[cellRef] || '') + ',';
-		}
-		csv = csv.slice(0, -1) + '\n';
-	}
-
-	const blob = new Blob([csv], { type: 'text/csv' });
-	const url = window.URL.createObjectURL(blob);
-	const a = document.createElement('a');
-	a.href = url;
-	a.download = 'spreadsheet.csv';
-	a.click();
-	window.URL.revokeObjectURL(url);
-}
-
-// Initialize when page loads
-document.addEventListener('DOMContentLoaded', initSpreadsheet);
+document.addEventListener('keydown', handleKeyboard);
+updateDisplay();
 </script>
 </body>
 </html>

@@ -510,16 +510,28 @@ public class AdminController {
 
 	@GetMapping("/api/statistics")
 	public Map<String, Object> getStatisticsData() {
+		System.out.println("AdminController.getStatisticsData() called");
 		Map<String, Object> data = new HashMap<>();
 
 		// Basic stats
-		data.put("totalOrders", statisticsService.getTotalOrders());
-		data.put("totalProducts", statisticsService.getTotalProducts());
-		data.put("totalUsers", statisticsService.getTotalUsers());
-		data.put("totalCategories", statisticsService.getTotalCategories());
+		long totalOrders = statisticsService.getTotalOrders();
+		long totalProducts = statisticsService.getTotalProducts();
+		long totalUsers = statisticsService.getTotalUsers();
+		long totalCategories = statisticsService.getTotalCategories();
+
+		System.out.println("API - totalOrders: " + totalOrders);
+		System.out.println("API - totalProducts: " + totalProducts);
+		System.out.println("API - totalUsers: " + totalUsers);
+		System.out.println("API - totalCategories: " + totalCategories);
+
+		data.put("totalOrders", totalOrders);
+		data.put("totalProducts", totalProducts);
+		data.put("totalUsers", totalUsers);
+		data.put("totalCategories", totalCategories);
 
 		// Orders by status
 		Map<String, Long> ordersByStatus = statisticsService.getOrdersByStatus();
+		System.out.println("API - ordersByStatus: " + ordersByStatus);
 		data.put("pendingOrders", ordersByStatus.getOrDefault("En attente", 0L));
 		data.put("processingOrders", ordersByStatus.getOrDefault("En cours", 0L));
 		data.put("deliveredOrders", ordersByStatus.getOrDefault("Livré", 0L));
@@ -527,11 +539,13 @@ public class AdminController {
 
 		// Products by category
 		Map<String, Long> productsByCategory = statisticsService.getProductsByCategory();
+		System.out.println("API - productsByCategory: " + productsByCategory);
 		data.put("categoryNames", new ArrayList<>(productsByCategory.keySet()));
 		data.put("categoryCounts", new ArrayList<>(productsByCategory.values()));
 
 		// Orders trend
 		List<Object[]> ordersTrend = statisticsService.getOrdersTrendLast30Days();
+		System.out.println("API - ordersTrend size: " + ordersTrend.size());
 		List<String> dates = ordersTrend.stream().map(arr -> (String) arr[0]).toList();
 		List<Long> counts = ordersTrend.stream().map(arr -> (Long) arr[1]).toList();
 		data.put("last30Days", dates);
@@ -539,11 +553,13 @@ public class AdminController {
 
 		// Top products
 		List<Object[]> topProducts = statisticsService.getTopSellingProducts(5);
+		System.out.println("API - topProducts size: " + topProducts.size());
 		List<String> productNames = topProducts.stream().map(arr -> (String) arr[0]).toList();
 		List<Long> productSales = topProducts.stream().map(arr -> (Long) arr[1]).toList();
 		data.put("topProductNames", productNames);
 		data.put("topProductSales", productSales);
 
+		System.out.println("API - returning data with keys: " + data.keySet());
 		return data;
 	}
 
